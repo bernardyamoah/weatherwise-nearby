@@ -12,7 +12,6 @@ interface RankingInput {
 
 /**
  * Score and rank places based on weather, distance, and open status
- * Returns top 5 recommendations
  */
 export function rankPlaces(input: RankingInput): ScoredPlace[] {
   const { places, userLocation, weatherCategory, timezoneId } = input;
@@ -40,7 +39,7 @@ export function rankPlaces(input: RankingInput): ScoredPlace[] {
     return a.distance - b.distance;
   });
 
-  return scoredPlaces.slice(0, 5);
+  return scoredPlaces;
 }
 
 /**
