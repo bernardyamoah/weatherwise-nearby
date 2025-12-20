@@ -1,33 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { Weather } from "@/lib/types";
 import {
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Area,
-  ComposedChart,
-} from "recharts";
-import {
-  CalendarRange,
-  CloudRain,
   Clock3,
+  CloudRain,
   Droplets,
   Gauge,
   ThermometerSun,
-  Wind,
+  Wind
 } from "lucide-react";
 
 interface WeatherPanelsProps {
@@ -61,24 +44,8 @@ export function WeatherPanels({ weather, localTime, timezone }: WeatherPanelsPro
       precipitation: weather.hourly?.precipitationProbability[index] ?? 0,
     }));
 
-  const dailyItems = (weather.daily?.time || [])
-    .slice(0, 5)
-    .map((time, index) => ({
-      time,
-      min: Math.round(weather.daily?.temperature2mMin[index] ?? 0),
-      max: Math.round(weather.daily?.temperature2mMax[index] ?? 0),
-      code: weather.daily?.weatherCode[index] ?? 0,
-    }));
 
-  const trendItems = (weather.hourly?.time || [])
-    .slice(0, 12)
-    .map((time, index) => ({
-      time,
-      label: formatHour(time, timezone),
-      temperature: Math.round(weather.hourly?.temperature2m[index] ?? 0),
-      apparent: Math.round(current?.apparentTemperature ?? weather.temperature),
-      precipitation: weather.hourly?.precipitationProbability[index] ?? 0,
-    }));
+
 
   const metrics = [
     {
@@ -119,14 +86,16 @@ export function WeatherPanels({ weather, localTime, timezone }: WeatherPanelsPro
   ];
 
   return (
-    <div className="space-y-4">
-      <Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+  
+  <Card className="lg:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
             Current Highlights
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
           {metrics.map((metric) => (
             <div
               key={metric.label}
@@ -145,95 +114,7 @@ export function WeatherPanels({ weather, localTime, timezone }: WeatherPanelsPro
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
-                Weather Trends
-              </CardTitle>
-              <Badge variant="outline" className="gap-1 text-[11px]">
-                <CloudRain className="h-3.5 w-3.5" />
-                Next 12 hours
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {trendItems.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Trend data unavailable.</div>
-            ) : (
-              <ChartContainer
-                config={{
-                  temperature: { label: "Temp (°C)", color: "hsl(var(--chart-1))" },
-                  apparent: { label: "Feels like", color: "hsl(var(--chart-2))" },
-                  precipitation: { label: "Precip %", color: "hsl(var(--chart-3))" },
-                }}
-                className="h-[280px]"
-              >
-                <ComposedChart data={trendItems} margin={{ left: 12, right: 12 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    interval={0}
-                    minTickGap={12}
-                  />
-                  <YAxis
-                    yAxisId="left"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={32}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    domain={[0, 100]}
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={32}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                  <ChartLegend content={<ChartLegendContent className="pt-2" />} />
-                  <Area
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="var(--color-temperature)"
-                    fill="var(--color-temperature)"
-                    fillOpacity={0.15}
-                    strokeWidth={2}
-                    activeDot={{ r: 4 }}
-                    name="temperature"
-                  />
-                  <Area
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="apparent"
-                    stroke="var(--color-apparent)"
-                    fill="var(--color-apparent)"
-                    fillOpacity={0.12}
-                    strokeWidth={2}
-                    name="apparent"
-                  />
-                  <Bar
-                    yAxisId="right"
-                    dataKey="precipitation"
-                    fill="var(--color-precipitation)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={18}
-                    name="precipitation"
-                  />
-                </ComposedChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
@@ -272,56 +153,8 @@ export function WeatherPanels({ weather, localTime, timezone }: WeatherPanelsPro
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
-                5-Day Forecast
-              </CardTitle>
-              <Badge variant="outline" className="gap-1 text-[11px]">
-                <CalendarRange className="h-3.5 w-3.5" />
-                Outlook
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {dailyItems.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Daily forecast unavailable.</div>
-            ) : (
-              dailyItems.map((day) => (
-                <div
-                  key={day.time}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-md bg-muted">
-                      <Image
-                        src={`/icons/${day.code}.png`}
-                        alt="Forecast icon"
-                        width={40}
-                        height={40}
-                      />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">{formatDay(day.time, timezone)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(day.time).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          timeZone: timezone,
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold">
-                    {day.max}° / {day.min}°
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+    
       </div>
-    </div>
+
   );
 }

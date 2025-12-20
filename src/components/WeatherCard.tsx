@@ -2,8 +2,8 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Weather } from "@/lib/types";
+import { Moon, Sun, Sunrise, Sunset } from "lucide-react";
 import Image from "next/image";
-import { Droplets, Gauge, ThermometerSun, Wind } from "lucide-react";
 
 interface WeatherCardProps {
   weather: Weather;
@@ -19,6 +19,23 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
     hour12: true,
     timeZone: timezone,
   });
+
+  const hour = localDate.getHours();
+  const timeOfDay = (() => {
+    if (hour >= 5 && hour < 11) return { label: "Morning", icon: Sunrise };
+    if (hour >= 11 && hour < 17) return { label: "Afternoon", icon: Sun };
+    if (hour >= 17 && hour < 21) return { label: "Evening", icon: Sunset };
+    return { label: "Night", icon: Moon };
+  })();
+
+  const timeColors: Record<typeof timeOfDay["label"], string> = {
+    Morning: "from-amber-500/30 via-orange-500/20 to-transparent",
+    Afternoon: "from-sky-400/25 via-cyan-400/15 to-transparent",
+    Evening: "from-purple-500/25 via-pink-500/20 to-transparent",
+    Night: "from-indigo-700/30 via-slate-800/30 to-transparent",
+  };
+
+  const timeAccent = timeColors[timeOfDay.label];
 
   const categoryStyles: Record<Weather["category"], { bg: string; accent: string; badge: string }> = {
     rainy: {
@@ -43,36 +60,28 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
     },
   };
 
-  const feelsLike = weather.current?.apparentTemperature ?? weather.temperature;
-  const humidity = weather.current?.relativeHumidity2m;
-  const wind = weather.current?.windSpeed10m;
-  const uv = weather.current?.uvIndex;
-
-  const stats = [
-    { icon: ThermometerSun, label: "Feels like", value: `${feelsLike}°C` },
-    humidity !== undefined
-      ? { icon: Droplets, label: "Humidity", value: `${humidity}%` }
-      : null,
-    wind !== undefined ? { icon: Wind, label: "Wind", value: `${wind} km/h` } : null,
-    uv !== undefined ? { icon: Gauge, label: "UV", value: uv } : null,
-  ].filter(Boolean) as { icon: typeof ThermometerSun; label: string; value: string | number }[];
+temperature;
 
   const theme = categoryStyles[weather.category];
 
   return (
     <Card
-      className={`mb-6 overflow-hidden border-2 bg-gradient-to-br ${theme.bg}`}
+      className={`relative mb-6 overflow-hidden border-2 bg-gradient-to-br ${theme.bg}`}
     >
-      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${timeColors[timeOfDay.label]}`} />
+      <CardContent className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
         <div className="relative flex items-center gap-4">
-          <div className={`flex-shrink-0 rounded-2xl p-3 backdrop-blur ${theme.badge}`}>
+          <div
+            className={`relative flex-shrink-0 overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br p-3 backdrop-blur ${timeAccent}`}
+          >
+            <div className={`absolute inset-0 bg-gradient-to-br ${theme.badge} opacity-40`} />
             <Image
               src={`/icons/${weather.icon}.png`}
               alt={weather.description}
               width={80}
               height={80}
               priority
-              className="drop-shadow-lg"
+              className="relative drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]"
             />
           </div>
           <div>
@@ -81,28 +90,19 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
             </div>
             <div className="text-muted-foreground capitalize">{weather.description}</div>
             <div className="text-xs text-muted-foreground/80">{timeString}</div>
-            <div className={`mt-1 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${theme.badge}`}>
-              Current • {weather.condition}
+            <div className="flex flex-wrap gap-2 pt-2">
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${theme.badge}`}>
+                <timeOfDay.icon className="h-3.5 w-3.5" />
+                {timeOfDay.label}
+              </div>
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${theme.badge}`}>
+                Current • {weather.condition}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className={`flex items-center gap-2 rounded-lg bg-white/5 p-3 text-sm backdrop-blur border border-white/10 ${theme.accent}`}
-            >
-              <stat.icon className="h-4 w-4 text-primary" />
-              <div className="leading-tight">
-                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {stat.label}
-                </div>
-                <div className="font-semibold text-foreground">{stat.value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+  
       </CardContent>
     </Card>
   );

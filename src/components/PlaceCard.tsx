@@ -4,14 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { formatDistance } from "@/lib/distance";
 import { getPlaceCategory } from "@/lib/places";
 import { ScoredPlace } from "@/lib/types";
@@ -31,6 +23,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AudioPlayer } from "./AudioPlayer";
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "./ui/drawer";
 
 interface PlaceCardProps {
   place: ScoredPlace;
@@ -206,13 +199,13 @@ export function PlaceCard({ place, rank }: PlaceCardProps) {
           </p>
         </div>
 
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Drawer open={open} onOpenChange={setOpen} >
           <div className="flex flex-wrap items-center gap-2">
-            <SheetTrigger asChild>
+            <DrawerTrigger asChild>
               <Button variant="secondary" size="sm">
                 Quick details
               </Button>
-            </SheetTrigger>
+            </DrawerTrigger>
             <Button variant="outline" size="sm" asChild>
               <Link href={googleMapsUrl} target="_blank" rel="noreferrer">
                 View on Maps
@@ -224,17 +217,17 @@ export function PlaceCard({ place, rank }: PlaceCardProps) {
             </span>
           </div>
 
-          <SheetContent
-            side="bottom"
-            className="rounded-t-xl sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2"
+          <DrawerContent
+        
+            className="sm:left-1/2 sm:max-w-2xl mx-auto"
           >
-            <SheetHeader className="gap-2">
-              <SheetTitle className="text-lg">{place.name}</SheetTitle>
-              <SheetDescription className="flex flex-col gap-2 text-sm text-foreground/80">
+            <DrawerHeader className="gap-2">
+              <DrawerTitle className="text-lg text-left">{place.name}</DrawerTitle>
+              <DrawerDescription className="text-left flex flex-col gap-2 text-sm text-foreground/80">
                 <span>{place.vicinity}</span>
                 <span className="text-muted-foreground">{place.explanation}</span>
-              </SheetDescription>
-            </SheetHeader>
+              </DrawerDescription>
+            </DrawerHeader>
 
             <div className="space-y-4 px-4 pb-4 text-sm">
               <div className="grid gap-3 md:grid-cols-2">
@@ -302,8 +295,8 @@ export function PlaceCard({ place, rank }: PlaceCardProps) {
                 </Button>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          </DrawerContent>
+        </Drawer>
       </CardContent>
     </Card>
   );
