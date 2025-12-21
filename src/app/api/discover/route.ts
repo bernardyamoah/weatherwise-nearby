@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Fetch all data in parallel
     const [weather, places, timezoneInfo] = await Promise.all([
       fetchWeather(lat, lng),
-      fetchNearbyPlaces(lat, lng, 1500, q),
+      fetchNearbyPlaces(lat, lng, 5000, q),
       getTimezone(lat, lng),
     ]);
 

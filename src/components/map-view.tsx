@@ -6,9 +6,12 @@ import { useEffect, useRef } from "react";
 interface MapViewProps {
   center: { lat: number; lng: number }
   places: ScoredPlace[]
+  selectedPlaceId?: string | null
+  onSelect?: (place: ScoredPlace) => void
+  weatherIcon?: string
 }
 
-export function MapView({ center, places }: MapViewProps) {
+export function MapView({ center, places, selectedPlaceId, onSelect, weatherIcon }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const googleMapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.Marker[]>([])
@@ -63,16 +66,49 @@ export function MapView({ center, places }: MapViewProps) {
       const marker = new window.google.maps.Marker({
         position: { lat: place.location.lat, lng: place.location.lng },
         map: googleMapRef.current,
-        label: {
-          text: (index + 1).toString(),
-          color: "white",
-        },
+        label: weatherIcon
+          ? undefined
+          : {
+              text: (index + 1).toString(),
+              color: "white",
+            },
+        icon: weatherIcon
+          ? {
+              url: `/icons/${weatherIcon}.png`,
+              scaledSize: new window.google.maps.Size(40, 40),
+              anchor: new window.google.maps.Point(20, 20),
+            }
+          : undefined,
         title: place.name,
+      })
+
+      marker.addListener("click", () => {
+        onSelect?.(place)
       })
 
       markersRef.current.push(marker)
     })
-  }, [places])
+  }, [places, onSelect, weatherIcon])
+
+  useEffect(() => {
+    if (!googleMapRef.current || !selectedPlaceId) return
+
+    const match = markersRef.current.find((marker) => {
+      const pos = marker.getPosition()
+      const place = places.find(
+        (p) =>
+          pos &&
+          Math.abs(p.location.lat - pos.lat()) < 1e-6 &&
+          Math.abs(p.location.lng - pos.lng()) < 1e-6
+      )
+      return place?.id === selectedPlaceId
+    })
+
+    if (match) {
+      googleMapRef.current.panTo(match.getPosition()!)
+      match.setAnimation(window.google.maps.Animation.DROP)
+    }
+  }, [selectedPlaceId, places])
 
   return (
     <div className="w-full h-full min-h-[400px] rounded-xl overflow-hidden border">

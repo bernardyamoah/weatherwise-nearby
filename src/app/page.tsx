@@ -9,7 +9,6 @@ import { AlertCircle } from "lucide-react";
 import { useQueryState } from "nuqs";
 
 import { WeatherBriefing } from "@/components/WeatherBriefing";
-import { WeatherPanels } from "@/components/WeatherPanels";
 
 export default function Home() {
   const geo = useGeolocation();
@@ -80,7 +79,7 @@ export default function Home() {
     <main className="c py-6 px-4 md:px-6 space-y-6">
       <WeatherCard weather={weather} localTime={localTime} timezone={timezone} />
 
-      <WeatherPanels weather={weather} localTime={localTime} timezone={timezone} />
+      {/* <WeatherPanels weather={weather} localTime={localTime} timezone={timezone} /> */}
 
       <WeatherBriefing data={data} />
 
