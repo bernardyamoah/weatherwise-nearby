@@ -21,8 +21,8 @@ A mobile-first web app that recommends nearby places based on your location, cur
 
 ## API Keys
 
-- **Weather**: Uses [Open-Meteo](https://open-meteo.com/) (free, no API key required)
-- **PLACES_API_KEY**: Get from [Google Cloud Console](https://console.cloud.google.com/) (Places API)
+- **Weather**: Uses Google Weather API via the same `PLACES_API_KEY` (falls back to Open-Meteo if Google is unavailable)
+- **PLACES_API_KEY**: Get from [Google Cloud Console](https://console.cloud.google.com/) (Places/Weather APIs)
 - **GOOGLE_TTS_API_KEY**: Get from [Google Cloud Console](https://console.cloud.google.com/) (Text-to-Speech API)
 
 ## Features

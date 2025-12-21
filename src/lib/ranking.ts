@@ -124,7 +124,6 @@ function generateExplanation(
   weatherCategory: WeatherCategory
 ): string {
   const isIndoor = isIndoorPlace(place.types);
-  const placeType = isIndoor ? "indoor" : "outdoor";
   const openStatus = isOpen ? "open" : "currently closed";
 
   const weatherReasons: Record<WeatherCategory, string> = {

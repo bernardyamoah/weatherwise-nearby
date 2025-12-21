@@ -32,12 +32,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to main content
+        </a>
         <Providers>
           <div className="flex min-h-screen w-full">
             <SidebarProvider>
               <AppSidebar />
               <SidebarInset className="flex flex-col flex-1">
-                <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 lg:h-[60px]">
+                <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4 lg:h-[60px]">
                   <SidebarTrigger className="-ml-1" />
                   <Separator orientation="vertical" className="mr-2 h-4" />
                   <div className="flex-1 flex items-center justify-between gap-4">

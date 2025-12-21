@@ -20,8 +20,8 @@ export interface HourlyForecast {
 
 export interface DailyForecast {
   time: string[];
-  temperature2mMax: number[];
-  temperature2mMin: number[];
+  temperature2mMax: (number | null)[];
+  temperature2mMin: (number | null)[];
   weatherCode: number[];
 }
 
@@ -30,6 +30,13 @@ export interface CurrentWeather {
   apparentTemperature: number;
   windSpeed10m: number;
   uvIndex: number;
+  pressureHpa?: number;
+  visibilityKm?: number;
+  cloudCover?: number;
+  dewPoint?: number;
+  precipitationProbability?: number;
+  sunrise?: string;
+  sunset?: string;
 }
 
 // Place Types
@@ -55,6 +62,10 @@ export interface Place {
   vicinity?: string;
   rating?: number;
   photoUrl?: string;
+  website?: string;
+  googleMapsUrl?: string;
+  menuUrl?: string;
+  phone?: string;
 }
 
 // Recommendation Types

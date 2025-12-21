@@ -34,6 +34,7 @@ export function SearchHeader() {
           placeholder="Search places..."
           className="pl-8 pr-10 w-full"
           value={inputValue}
+          aria-label="Search places"
           onChange={(e) => setInputValue(e.target.value)}
         />
         {inputValue && (
@@ -42,6 +43,7 @@ export function SearchHeader() {
             size="icon"
             className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
             onClick={handleClear}
+            aria-label="Clear search"
           >
             <X className="h-4 w-4 text-muted-foreground" />
           </Button>

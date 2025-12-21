@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useDiscoveryQuery } from "@/hooks/useDiscoveryQuery"
 import { useGeolocation } from "@/hooks/useGeolocation"
 import { formatDistance } from "@/lib/distance"
-import { AlertCircle, MapPin, Navigation, Star } from "lucide-react"
+import { AlertCircle, Clock3, MapPin, Navigation, Star, Thermometer, Wind } from "lucide-react"
 import Link from "next/link"
 import { useQueryState } from "nuqs"
 import { useEffect, useMemo, useState } from "react"
@@ -51,58 +51,59 @@ export default function MapPage() {
   )
 
   useEffect(() => {
-    setQueryInput(search || "")
+    if (search !== queryInput) {
+      setQueryInput(search || "")
+      setSelectedPlaceId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  useEffect(() => {
-    // Reset selection when the search query changes or new data arrives
-    setSelectedPlaceId(null)
-  }, [search, data?.recommendations?.length])
-
   const locationReady = latToUse !== null && lngToUse !== null
+  const weather = data?.weather
+  const offline = typeof navigator !== "undefined" && !navigator.onLine
+
+  const selectedPlace = useMemo(
+    () => data?.recommendations?.find((p) => p.id === selectedPlaceId) ?? null,
+    [data?.recommendations, selectedPlaceId]
+  )
 
   if ((geo.loading && !parsedCustomLocation) || (isLoading && locationReady)) {
     return (
-      <div className="p-6 h-[calc(100vh-60px)]">
+      <main id="main-content" className="p-6 h-[calc(100vh-60px)]">
         <Skeleton className="w-full h-full rounded-xl" />
-      </div>
+      </main>
     )
   }
 
   if ((!locationReady && geo.error) || error) {
     return (
-      <div className="p-6">
+      <main id="main-content" className="p-6">
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="flex items-center gap-4 p-6">
             <AlertCircle className="w-6 h-6 text-destructive" />
             <div>
               <h2 className="font-semibold text-destructive">Error</h2>
               <p className="text-sm text-destructive-foreground">
-                {geo.error || error?.message || "Something went wrong"}
+                {offline ? "You appear to be offline. Reconnect and retry." : geo.error || error?.message || "Something went wrong"}
               </p>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     )
   }
 
   if (!locationReady) {
     return (
-      <div className="p-6">
+      <main id="main-content" className="p-6">
         <Card className="border-dashed">
           <CardContent className="p-6 text-sm text-muted-foreground space-y-2">
             <p>Unable to resolve a location. Enable geolocation or enter custom coordinates (lat, lng).</p>
           </CardContent>
         </Card>
-      </div>
+      </main>
     )
   }
-
-  const selectedPlace = useMemo(
-    () => data?.recommendations?.find((p) => p.id === selectedPlaceId) ?? null,
-    [data?.recommendations, selectedPlaceId]
-  )
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,7 +116,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="p-6 h-[calc(100vh-60px)] flex flex-col gap-4">
+    <main id="main-content" className="p-6 h-[calc(100vh-60px)] flex flex-col gap-4">
       <Card className="border-muted/50 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Map Explorer</CardTitle>
@@ -130,6 +131,7 @@ export default function MapPage() {
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
                 placeholder="Search places (e.g., cafe, park)"
+                aria-label="Search nearby places"
               />
               <Button type="submit" className="whitespace-nowrap">Search</Button>
               <Button type="button" variant="ghost" onClick={handleClear}>
@@ -147,6 +149,7 @@ export default function MapPage() {
                   value={customLocationInput}
                   onChange={(e) => setCustomLocationInput(e.target.value)}
                   placeholder="Custom location (lat,lng)"
+                  aria-label="Custom location coordinates"
                   className="md:w-72"
                 />
                 <p className="text-[11px] text-muted-foreground">
@@ -169,7 +172,7 @@ export default function MapPage() {
       </div>
 
       <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlaceId(null)}>
-        <SheetContent side="bottom" className="sm:max-w-xl sm:left-1/2 sm:-translate-x-1/2 rounded-t-xl p-5npx shadcn@latest add https://tweakcn.com/r/themes/vintage-paper.json">
+        <SheetContent side="bottom" className="sm:max-w-xl sm:left-1/2 sm:-translate-x-1/2 rounded-t-xl p-5">
           {selectedPlace ? (
             <>
               <SheetHeader>
@@ -192,6 +195,31 @@ export default function MapPage() {
                   <MapPin className="h-4 w-4 text-primary" />
                   <span>{formatDistance(selectedPlace.distance)} away</span>
                 </div>
+                {weather && (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <Thermometer className="h-4 w-4 text-primary" />
+                      <div className="text-xs leading-tight">
+                        <div className="font-semibold">{weather.temperature}°C</div>
+                        <div className="text-muted-foreground">Feels like {weather.current?.apparentTemperature ?? weather.temperature}°C</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <Wind className="h-4 w-4 text-primary" />
+                      <div className="text-xs leading-tight">
+                        <div className="font-semibold">{weather.current?.windSpeed10m ?? 0} km/h wind</div>
+                        <div className="text-muted-foreground">{weather.description}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <Clock3 className="h-4 w-4 text-primary" />
+                      <div className="text-xs leading-tight">
+                        <div className="font-semibold">Local time</div>
+                        <div className="text-muted-foreground">{data?.localTime ? new Date(data.localTime).toLocaleTimeString() : "Now"}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="rounded-lg border border-primary/10 bg-primary/5 p-3 text-sm leading-relaxed">
                   {selectedPlace.explanation}
                 </div>
@@ -222,6 +250,6 @@ export default function MapPage() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </main>
   )
 }

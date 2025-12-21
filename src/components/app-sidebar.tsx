@@ -1,25 +1,25 @@
 "use client"
 
 import {
-    Cloud,
-    History,
-    Map,
-    Search,
-    Settings,
-    Star
+  Cloud,
+  History,
+  Map,
+  Search,
+  Settings,
+  Star
 } from "lucide-react"
 
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -46,6 +46,11 @@ const items = [
     icon: Star,
   },
   {
+    title: "Hotels",
+    url: "/hotels",
+    icon: Map,
+  },
+  {
     title: "History",
     url: "/history",
     icon: History,
@@ -57,8 +62,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 flex items-center justify-center border-b">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+      <SidebarHeader className="h-16 flex items-center justify-center border-b border-border">
+        <Link href="/" className="flex w-full items-center gap-2 font-bold text-xl">
           <div className="bg-primary text-primary-foreground p-1 rounded">
              <Cloud className="w-5 h-5" />
           </div>

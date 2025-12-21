@@ -30,6 +30,17 @@ interface GooglePlace {
   }[];
 }
 
+interface GooglePlaceDetailsResponse {
+  result?: {
+    website?: string;
+    url?: string;
+    formatted_phone_number?: string;
+    international_phone_number?: string;
+  };
+  status: string;
+  error_message?: string;
+}
+
 function parseTime(time: string): { hour: number; minute: number } {
   // Google returns time as "HHMM" string
   return {
@@ -107,7 +118,7 @@ export async function fetchNearbyPlaces(
     throw new Error(`Places API error: ${data.status} - ${data.error_message}`);
   }
 
-  const places: Place[] = data.results.slice(0, 10).map((place) => ({
+  const places: Place[] = data.results.slice(0, 60).map((place) => ({
     id: place.place_id,
     name: place.name,
     types: place.types,
@@ -121,6 +132,7 @@ export async function fetchNearbyPlaces(
     photoUrl: place.photos?.[0]
       ? buildPhotoUrl(place.photos[0].photo_reference, apiKey)
       : undefined,
+    googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${place.geometry.location.lat},${place.geometry.location.lng}&query_place_id=${place.place_id}`,
   }));
 
   console.log("[Places] Found", places.length, "places");
@@ -181,4 +193,50 @@ export function getPlaceCategory(types: string[]): "indoor" | "outdoor" | "mixed
   if (isIndoor && !isOutdoor) return "indoor";
   if (isOutdoor && !isIndoor) return "outdoor";
   return "mixed";
+}
+
+const RESTAURANT_TYPES = new Set([
+  "restaurant",
+  "food",
+  "meal_takeaway",
+  "meal_delivery",
+  "cafe",
+]);
+
+export function isRestaurant(types: string[]) {
+  return types.some((type) => RESTAURANT_TYPES.has(type));
+}
+
+export async function fetchPlaceDetails(placeId: string): Promise<Partial<Place>> {
+  const apiKey = process.env.PLACES_API_KEY;
+  if (!apiKey) {
+    throw new Error("PLACES_API_KEY is not configured");
+  }
+
+  const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
+  url.searchParams.set("place_id", placeId);
+  url.searchParams.set("fields", "website,url,formatted_phone_number,international_phone_number");
+  url.searchParams.set("key", apiKey);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Place Details error: ${response.status} - ${error}`);
+  }
+
+  const data: GooglePlaceDetailsResponse = await response.json();
+
+  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+    throw new Error(`Place Details error: ${data.status} - ${data.error_message}`);
+  }
+
+  const website = data.result?.website;
+  const mapsUrl = data.result?.url;
+  const phone = data.result?.international_phone_number || data.result?.formatted_phone_number;
+  return {
+    website,
+    menuUrl: website || mapsUrl,
+    googleMapsUrl: mapsUrl,
+    phone,
+  };
 }

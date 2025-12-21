@@ -4,7 +4,17 @@ import { useGeolocationStore } from "@/store/geolocation";
 import { useCallback, useEffect } from "react";
 
 export function useGeolocation() {
-  const { latitude, longitude, error, loading, setLocation, setError, setLoading } = useGeolocationStore();
+  const {
+    latitude,
+    longitude,
+    error,
+    loading,
+    source,
+    setLocation,
+    setManualLocation,
+    setError,
+    setLoading,
+  } = useGeolocationStore();
 
   const getPosition = useCallback(() => {
     if (!navigator.geolocation) {
@@ -52,6 +62,8 @@ export function useGeolocation() {
     longitude,
     error,
     loading,
+    source,
     refresh: getPosition,
+    setManualLocation,
   };
 }

@@ -15,6 +15,7 @@ export function MapView({ center, places, selectedPlaceId, onSelect, weatherIcon
   const mapRef = useRef<HTMLDivElement>(null)
   const googleMapRef = useRef<google.maps.Map | null>(null)
   const markersRef = useRef<google.maps.Marker[]>([])
+  const markerLookupRef = useRef<Record<string, google.maps.Marker>>({})
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -60,30 +61,60 @@ export function MapView({ center, places, selectedPlaceId, onSelect, weatherIcon
     // Clear existing markers
     markersRef.current.forEach((m) => m.setMap(null))
     markersRef.current = []
+    markerLookupRef.current = {}
 
-    // Add place markers
-    places.forEach((place, index) => {
+    const clusters = buildClusters(places)
+
+    clusters.forEach((cluster, index) => {
       const marker = new window.google.maps.Marker({
-        position: { lat: place.location.lat, lng: place.location.lng },
-        map: googleMapRef.current,
-        label: weatherIcon
-          ? undefined
-          : {
-              text: (index + 1).toString(),
-              color: "white",
-            },
-        icon: weatherIcon
-          ? {
-              url: `/icons/${weatherIcon}.png`,
-              scaledSize: new window.google.maps.Size(40, 40),
-              anchor: new window.google.maps.Point(20, 20),
-            }
-          : undefined,
-        title: place.name,
+        position: cluster.center,
+        map: googleMapRef.current!,
+        label:
+          weatherIcon || cluster.items.length > 1
+            ? undefined
+            : {
+                text: (index + 1).toString(),
+                color: "white",
+              },
+        icon:
+          weatherIcon && cluster.items.length === 1
+            ? {
+                url: `/icons/${weatherIcon}.png`,
+                    scaledSize: new window.google.maps.Size(40, 40),
+                
+                anchor: new window.google.maps.Point(20, 20),
+              }
+            : cluster.items.length > 1
+              ? {
+                  path: window.google.maps.SymbolPath.CIRCLE,
+                  scale: 18,
+                  fillColor: "#6366f1",
+                  fillOpacity: 0.85,
+                  strokeColor: "#ffffff",
+                  strokeWeight: 2,
+                }
+              : undefined,
+        title:
+          cluster.items.length > 1
+            ? `${cluster.items.length} nearby spots`
+            : cluster.items[0].name,
       })
 
       marker.addListener("click", () => {
-        onSelect?.(place)
+        if (cluster.items.length === 1) {
+          onSelect?.(cluster.items[0])
+          return
+        }
+
+        const bounds = new window.google.maps.LatLngBounds()
+        cluster.items.forEach((place) => {
+          bounds.extend(new window.google.maps.LatLng(place.location.lat, place.location.lng))
+        })
+        googleMapRef.current?.fitBounds(bounds)
+      })
+
+      cluster.items.forEach((place) => {
+        markerLookupRef.current[place.id] = marker
       })
 
       markersRef.current.push(marker)
@@ -93,16 +124,7 @@ export function MapView({ center, places, selectedPlaceId, onSelect, weatherIcon
   useEffect(() => {
     if (!googleMapRef.current || !selectedPlaceId) return
 
-    const match = markersRef.current.find((marker) => {
-      const pos = marker.getPosition()
-      const place = places.find(
-        (p) =>
-          pos &&
-          Math.abs(p.location.lat - pos.lat()) < 1e-6 &&
-          Math.abs(p.location.lng - pos.lng()) < 1e-6
-      )
-      return place?.id === selectedPlaceId
-    })
+    const match = markerLookupRef.current[selectedPlaceId]
 
     if (match) {
       googleMapRef.current.panTo(match.getPosition()!)
@@ -115,6 +137,42 @@ export function MapView({ center, places, selectedPlaceId, onSelect, weatherIcon
       <div ref={mapRef} className="w-full h-full" />
     </div>
   )
+}
+
+function buildClusters(places: ScoredPlace[]) {
+  const clusters: { center: { lat: number; lng: number }; items: ScoredPlace[] }[] = []
+  const thresholdKm = 0.35
+
+  places.forEach((place) => {
+    const existingCluster = clusters.find((cluster) => distanceKm(cluster.center, place.location) < thresholdKm)
+    if (existingCluster) {
+      existingCluster.items.push(place)
+      const total = existingCluster.items.length
+      existingCluster.center = {
+        lat: (existingCluster.center.lat * (total - 1) + place.location.lat) / total,
+        lng: (existingCluster.center.lng * (total - 1) + place.location.lng) / total,
+      }
+    } else {
+      clusters.push({ center: { ...place.location }, items: [place] })
+    }
+  })
+
+  return clusters
+}
+
+function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (value: number) => (value * Math.PI) / 180
+  const R = 6371
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+
+  const haversine =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2)
+  const c = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  return R * c
 }
 
 const DARK_MAP_STYLE = [

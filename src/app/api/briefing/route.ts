@@ -6,9 +6,18 @@ const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
 
+interface BriefingPlace {
+  name: string;
+  explanation?: string;
+}
+
 export async function POST(req: Request) {
   try {
-    const { weather, recommendations, localTime } = await req.json();
+    const { weather, recommendations, localTime } = (await req.json()) as {
+      weather?: { temperature?: number; description?: string; category?: string };
+      recommendations?: BriefingPlace[];
+      localTime?: string;
+    };
 
     if (!weather || !recommendations) {
       return NextResponse.json(
@@ -21,7 +30,10 @@ export async function POST(req: Request) {
       You are a helpful, witty AI assistant for WeatherWise Nearby. 
       Current Local Time: ${localTime}
       Current Weather: ${weather.temperature}°C, ${weather.description} (${weather.category})
-      Recommended Nearby Places: ${recommendations.slice(0, 3).map((r: any) => `${r.name} (${r.explanation})`).join(", ")}
+      Recommended Nearby Places: ${recommendations
+        .slice(0, 3)
+        .map((r) => `${r.name} (${r.explanation || "great vibes"})`)
+        .join(", ")}
 
       Write a concise, catchy 2-3 sentence internal briefing for the user. 
       - Mention the current weather vibe.
@@ -44,7 +56,7 @@ export async function POST(req: Request) {
     const briefing = response.choices[0]?.message?.content || "Getting ready for your day!";
 
     return NextResponse.json({ briefing });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[AI Briefing Error]:", error);
     return NextResponse.json(
       { error: "Failed to generate AI briefing" },

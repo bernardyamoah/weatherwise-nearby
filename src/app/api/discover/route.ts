@@ -1,4 +1,4 @@
-import { fetchNearbyPlaces } from "@/lib/places";
+import { fetchNearbyPlaces, fetchPlaceDetails, isRestaurant } from "@/lib/places";
 import { rankPlaces } from "@/lib/ranking";
 import { getTimezone } from "@/lib/timezone";
 import { DiscoveryResponse } from "@/lib/types";
@@ -38,9 +38,22 @@ export async function GET(request: NextRequest) {
       getTimezone(lat, lng),
     ]);
 
+    const detailedPlaces = await Promise.all(
+      places.map(async (place, index) => {
+        if (!isRestaurant(place.types) || index >= 6) return place;
+        try {
+          const details = await fetchPlaceDetails(place.id);
+          return { ...place, ...details };
+        } catch (error) {
+          console.warn("[Places] Details failed", place.id, error);
+          return place;
+        }
+      })
+    );
+
     // Rank places based on weather
     const recommendations = rankPlaces({
-      places,
+      places: detailedPlaces,
       userLocation,
       weatherCategory: weather.category,
       timezoneId: timezoneInfo.timezoneId,

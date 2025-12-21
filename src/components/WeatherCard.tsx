@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Weather } from "@/lib/types";
-import { Moon, Sun, Sunrise, Sunset } from "lucide-react";
+import { Droplets, Moon, Sun, Sunrise, Sunset, Wind } from "lucide-react";
 import Image from "next/image";
 
 interface WeatherCardProps {
@@ -28,91 +28,102 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
     return { label: "Night", icon: Moon };
   })();
 
-  const timeColors: Record<typeof timeOfDay["label"], string> = {
-    Morning: "from-amber-500/30 via-orange-500/20 to-transparent",
-    Afternoon: "from-sky-400/25 via-cyan-400/15 to-transparent",
-    Evening: "from-purple-500/25 via-pink-500/20 to-transparent",
-    Night: "from-indigo-700/30 via-slate-800/30 to-transparent",
-  };
-
-  const timeAccent = timeColors[timeOfDay.label];
-
-  const categoryStyles: Record<Weather["category"], { bg: string; accent: string; badge: string; darkBg: string; darkAccent: string; darkBadge: string }> = {
+  const categoryStyles: Record<Weather["category"], { 
+    gradient: string; 
+    overlay: string;
+    glow: string;
+  }> = {
     rainy: {
-      bg: "from-blue-50 via-slate-50 to-white border-blue-200/60",
-      accent: "text-blue-900",
-      badge: "bg-blue-100 text-blue-900 border-blue-200",
-      darkBg: "from-blue-900/80 via-slate-900/60 to-slate-950/80 border-blue-500/40",
-      darkAccent: "text-blue-100",
-      darkBadge: "bg-blue-500/20 text-blue-100 border-blue-400/60",
+      gradient: "from-slate-900 via-blue-950 to-indigo-950",
+      overlay: "from-blue-500/20 via-cyan-500/10 to-transparent",
+      glow: "shadow-blue-500/50",
     },
     hot: {
-      bg: "from-orange-50 via-amber-50 to-white border-orange-200/60",
-      accent: "text-orange-900",
-      badge: "bg-orange-100 text-orange-900 border-orange-200",
-      darkBg: "from-orange-900/80 via-amber-900/50 to-slate-950/80 border-orange-500/40",
-      darkAccent: "text-orange-50",
-      darkBadge: "bg-orange-500/20 text-orange-50 border-orange-400/60",
+      gradient: "from-orange-950 via-amber-950 to-yellow-950",
+      overlay: "from-orange-500/20 via-amber-500/10 to-transparent",
+      glow: "shadow-orange-500/50",
     },
     cold: {
-      bg: "from-cyan-50 via-slate-50 to-white border-cyan-200/60",
-      accent: "text-cyan-900",
-      badge: "bg-cyan-100 text-cyan-900 border-cyan-200",
-      darkBg: "from-cyan-900/80 via-slate-900/60 to-slate-950/80 border-cyan-500/40",
-      darkAccent: "text-cyan-50",
-      darkBadge: "bg-cyan-500/20 text-cyan-50 border-cyan-400/60",
+      gradient: "from-cyan-950 via-blue-950 to-slate-950",
+      overlay: "from-cyan-400/20 via-blue-400/10 to-transparent",
+      glow: "shadow-cyan-500/50",
     },
     clear: {
-      bg: "from-emerald-50 via-slate-50 to-white border-emerald-200/60",
-      accent: "text-emerald-900",
-      badge: "bg-emerald-100 text-emerald-900 border-emerald-200",
-      darkBg: "from-emerald-900/80 via-slate-900/60 to-slate-950/80 border-emerald-500/40",
-      darkAccent: "text-emerald-50",
-      darkBadge: "bg-emerald-500/20 text-emerald-50 border-emerald-400/60",
+      gradient: "from-sky-900 via-blue-900 to-indigo-900",
+      overlay: "from-sky-400/20 via-blue-400/10 to-transparent",
+      glow: "shadow-sky-500/50",
     },
   };
 
   const theme = categoryStyles[weather.category];
 
   return (
-    <Card
-      className={`relative mb-6 overflow-hidden border-2 bg-gradient-to-br ${theme.bg} dark:${theme.darkBg}`}
-    >
-      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${timeColors[timeOfDay.label]}`} />
-      <CardContent className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-        <div className="relative flex items-center gap-4">
-          <div
-            className={`relative flex-shrink-0 overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br p-3 backdrop-blur ${timeAccent}`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${theme.badge} opacity-40 dark:${theme.darkBadge}`} />
-            <Image
-              src={`/icons/${weather.icon}.png`}
-              alt={weather.description}
-              width={80}
-              height={80}
-              priority
-              className="relative drop-shadow-[0_12px_24px_rgba(0,0,0,0.35)]"
-            />
-          </div>
-          <div>
-            <div className={`text-4xl font-bold leading-none $`}>
-              {weather.temperature}°C
-            </div>
-            <div className="text-muted-foreground capitalize">{weather.description}</div>
-            <div className="text-xs text-muted-foreground/80">{timeString}</div>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${theme.badge} dark:${theme.darkBadge}`}>
-                <timeOfDay.icon className="h-3.5 w-3.5" />
-                {timeOfDay.label}
+    <Card className={`group relative mb-6 overflow-hidden border-0 bg-gradient-to-br ${theme.gradient} shadow-2xl transition-all duration-700 hover:scale-[1.02] hover:shadow-3xl`}>
+      {/* Animated background overlay */}
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-0 transition-opacity duration-700 group-hover:opacity-100`} />
+      
+      {/* Noise texture */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay" 
+           style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' /%3E%3C/svg%3E\")" }} />
+
+      <CardContent className="relative p-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left side - Main weather info */}
+          <div className="flex items-center gap-6">
+            {/* Weather icon with glow */}
+            <div className={`relative flex-shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}>
+              <div className={`absolute inset-0 rounded-3xl bg-white/10 blur-2xl ${theme.glow} transition-all duration-500 group-hover:blur-3xl`} />
+              <div className="relative rounded-3xl bg-white/5 p-4 backdrop-blur-xl border border-white/10">
+                <Image
+                  src={`/icons/${weather.icon}.png`}
+                  alt={weather.description}
+                  width={96}
+                  height={96}
+                  priority
+                  className="relative drop-shadow-2xl"
+                />
               </div>
-              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${theme.badge} dark:${theme.darkBadge}`}>
-                Current • {weather.condition}
+            </div>
+
+            {/* Temperature and description */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-7xl font-black tracking-tighter text-white transition-all duration-500 group-hover:scale-105">
+                  {weather.temperature}
+                </span>
+                <span className="text-4xl font-light text-white/60">°C</span>
+              </div>
+              <p className="text-xl font-medium capitalize text-white/90">
+                {weather.description}
+              </p>
+              <div className="flex items-center gap-2 text-sm text-white/50">
+                <timeOfDay.icon className="h-4 w-4" />
+                <span>{timeOfDay.label} • {timeString}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right side - Condition badge */}
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <div className="rounded-full bg-white/10 px-5 py-2 backdrop-blur-md border border-white/20 transition-all duration-300 hover:bg-white/20">
+              <span className="text-sm font-semibold uppercase tracking-widest text-white">
+                {weather.condition}
+              </span>
+            </div>
+            
+            {/* Additional weather metrics */}
+            <div className="flex gap-3">
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+                <Droplets className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-xs font-medium text-white/70">85%</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+                <Wind className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-xs font-medium text-white/70">12 km/h</span>
               </div>
             </div>
           </div>
         </div>
-
-  
       </CardContent>
     </Card>
   );
