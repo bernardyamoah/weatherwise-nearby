@@ -4,7 +4,9 @@ import { AudioPlayer } from "@/components/AudioPlayer"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Weather } from "@/lib/types"
-import { AlertTriangle, Flame, Snowflake, CloudRain, Wind } from "lucide-react"
+import { AlertTriangle, Flame, Snowflake, CloudRain, Wind, Sparkles, RefreshCcw, Loader2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Button } from "./ui/button"
 
 interface WeatherAlertsProps {
   weather: Weather
@@ -20,7 +22,13 @@ interface AlertItem {
 }
 
 export function WeatherAlerts({ weather }: WeatherAlertsProps) {
-  const alerts = buildAlerts(weather)
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ["ai-alerts", weather.temperature, weather.category, weather.description],
+    queryFn: () => fetchAlerts(weather),
+    staleTime: 15 * 60 * 1000,
+  })
+
+  const alerts = (data?.alerts?.length ? data.alerts : buildAlerts(weather)) as AlertItem[]
 
   if (alerts.length === 0) return null
 
@@ -64,21 +72,37 @@ export function WeatherAlerts({ weather }: WeatherAlertsProps) {
               <AlertTriangle className={`h-5 w-5 ${theme.iconColor}`} />
             </div>
             <div className="flex flex-col gap-1">
-              <CardTitle className="text-lg font-bold text-white">Active Alerts</CardTitle>
-              <p className="text-sm text-white/60">Stay informed about current conditions</p>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <CardTitle className="text-lg font-bold text-white">AI Safety Alerts</CardTitle>
+              </div>
+              <p className="text-sm text-white/60">Realtime weather-aware guidance with offline fallback.</p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
             <Badge className={`${theme.badge} border font-semibold uppercase tracking-wider backdrop-blur-sm`}>
-              Live
+              {isLoading ? "Fetching" : "Live"}
             </Badge>
             <AudioPlayer text={voiceSummary} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-white"
+              onClick={() => refetch()}
+              aria-label="Refresh AI alerts"
+            >
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="relative space-y-3 pt-0">
+        {error && (
+          <div className="text-xs text-amber-200">AI alerts unavailable; showing local safety tips.</div>
+        )}
+
         {alerts.map((alert, index) => {
           const alertTheme = severityStyles[alert.severity]
           const Icon = alert.icon
@@ -93,7 +117,7 @@ export function WeatherAlerts({ weather }: WeatherAlertsProps) {
               
               <div className="relative flex gap-3">
                 <div className={`flex-shrink-0 rounded-lg ${alertTheme.iconBg} p-2 transition-transform duration-300 group-hover/alert:scale-110`}>
-                  <Icon className={`h-5 w-5 ${alertTheme.iconColor}`} />
+                  {/* <Icon className={`h-5 w-5 ${alertTheme.iconColor}`} /> */}
                 </div>
                 
                 <div className="flex-1 space-y-2">
@@ -116,6 +140,20 @@ export function WeatherAlerts({ weather }: WeatherAlertsProps) {
       </CardContent>
     </Card>
   )
+}
+
+async function fetchAlerts(weather: Weather) {
+  const response = await fetch("/api/ai/alerts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ weather }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch AI alerts")
+  }
+
+  return response.json() as Promise<{ alerts: AlertItem[] }>
 }
 
 function buildAlerts(weather: Weather): AlertItem[] {

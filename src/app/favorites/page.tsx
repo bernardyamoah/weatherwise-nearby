@@ -4,6 +4,7 @@ import { LocationOnboarding } from "@/components/LocationOnboarding"
 import { PlaceCard } from "@/components/PlaceCard"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -11,13 +12,14 @@ import { useDiscoveryQuery } from "@/hooks/useDiscoveryQuery"
 import { useGeolocation } from "@/hooks/useGeolocation"
 import { getPlaceCategory } from "@/lib/places"
 import { useFavoritesStore } from "@/store/favorites"
-import { Heart, Wand2 } from "lucide-react"
+import { Heart, MapPin, Wand2 } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 
 export default function FavoritesPage() {
   const geo = useGeolocation()
   const { favorites, toggleFavorite, togglePin, isPinned } = useFavoritesStore()
   const [sortBy, setSortBy] = useState<"name" | "temperature">("name")
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false)
 
   const { data, isLoading, error } = useDiscoveryQuery(
     geo.latitude,
@@ -68,10 +70,29 @@ export default function FavoritesPage() {
   if (!locationReady) {
     return (
       <main id="main-content" className="p-6 space-y-6 max-w-5xl mx-auto">
-        <LocationOnboarding geo={geo} />
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-muted-foreground text-sm">
-            Set your location to see saved spots nearby.
+        <Card className="border-muted/60 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">Location needed</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">Set your location to see saved spots nearby.</p>
+          </CardHeader>
+          <CardContent>
+            <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="inline-flex items-center gap-2 rounded-md border border-border/70 bg-background px-4 py-2 text-sm font-medium hover:border-primary">
+                  <MapPin className="h-4 w-4" />
+                  Choose location
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Update your location</DialogTitle>
+                </DialogHeader>
+                <LocationOnboarding geo={geo} />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </main>
@@ -107,7 +128,34 @@ export default function FavoritesPage() {
   return (
     <main id="main-content" className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col gap-4">
-        <LocationOnboarding geo={geo} compact />
+        <Card className="border-muted/60 shadow-sm">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                <p className="text-sm font-semibold">Location in use</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {geo.source === "manual" ? "Using searched location" : "Using your current location"} · {geo.latitude?.toFixed(3)}, {geo.longitude?.toFixed(3)}
+              </p>
+            </div>
+            <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="inline-flex items-center gap-2 rounded-md border border-border/70 bg-background px-3 py-2 text-sm font-medium hover:border-primary">
+                  <MapPin className="h-4 w-4" />
+                  Update location
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Update your location</DialogTitle>
+                </DialogHeader>
+                <LocationOnboarding geo={geo} />
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+        </Card>
+
         <Card className="border-muted/60 shadow-sm">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
@@ -160,6 +208,11 @@ export default function FavoritesPage() {
               pinned={isPinned(place.id)}
               onPinToggle={togglePin}
               onSwipeRemove={toggleFavorite}
+              weather={data?.weather}
+              localTime={data?.localTime}
+              timezone={data?.timezone}
+              originLat={geo.autoLatitude ?? geo.latitude}
+              originLng={geo.autoLongitude ?? geo.longitude}
             />
           ))}
         </div>

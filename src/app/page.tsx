@@ -1,8 +1,10 @@
 'use client'
 import { LocationOnboarding } from "@/components/LocationOnboarding";
+import { PlaceInsight } from "@/components/PlaceInsight";
 import { PlaceCard } from "@/components/PlaceCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WeatherAlerts } from "@/components/WeatherAlerts";
 import { WeatherCard } from "@/components/WeatherCard";
@@ -18,6 +20,7 @@ export default function Home() {
   const geo = useGeolocation();
   const [search, setSearch] = useQueryState("q");
   const quickTabs = ["coffee", "parks", "art", "family", "date night"];
+  const hasSearch = Boolean(search);
   
   const { data, isLoading: isQueryLoading, error: queryError } = useDiscoveryQuery(
     geo.latitude,
@@ -105,42 +108,100 @@ export default function Home() {
   }
 
   const { weather, localTime, timezone, recommendations } = data;
+  const topPick = recommendations[0];
+  const latDisplay = (geo.autoLatitude ?? geo.latitude)?.toFixed(3);
+  const lngDisplay = (geo.autoLongitude ?? geo.longitude)?.toFixed(3);
+  const localTimeLabel = localTime ? new Date(localTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
 
   return (
     <main id="main-content" className="container max-w-7xl mx-auto space-y-6 py-6 px-4 md:px-6">
-      <LocationOnboarding geo={geo} compact />
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Quick picks:</span>
-        {quickTabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setSearch(tab)}
-            className="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium transition hover:border-primary hover:text-foreground"
-          >
-            {tab}
-          </button>
-        ))}
-        <div className="ml-auto">
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link href={search ? `/map?q=${encodeURIComponent(search)}` : "/map"}>
-              <Map className="h-4 w-4" />
-              Open map view
-            </Link>
+      <section className="rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Places near you</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {geo.locationLabel && (
+                <Badge variant="outline" className="border-primary/40 text-foreground">
+                  {geo.locationLabel}
+                </Badge>
+              )}
+              {latDisplay && lngDisplay && (
+                <Badge variant="secondary">Lat {latDisplay} · Lng {lngDisplay}</Badge>
+              )}
+              <Badge variant="outline">{geo.source === "manual" ? "Manual location" : "Auto location"}</Badge>
+              {localTimeLabel && <Badge variant="outline">Local {localTimeLabel}</Badge>}
+              <Badge variant="outline">{weather.description}</Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={!hasSearch}
+              onClick={() => setSearch(null)}
+            >
+              Clear search
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link href={search ? `/map?q=${encodeURIComponent(search)}` : "/map"}>
+                <Map className="h-4 w-4" />
+                Open map view
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Quick picks</span>
+          {quickTabs.map((tab) => (
+            <Button
+              key={tab}
+              type="button"
+              size="sm"
+              variant={search === tab ? "secondary" : "outline"}
+              className="rounded-full"
+              onClick={() => setSearch(tab)}
+            >
+              {tab}
+            </Button>
+          ))}
+          <Button type="button" size="sm" variant="ghost" onClick={geo.refresh} className="ml-auto">
+            Refresh location
           </Button>
         </div>
-      </div>
+      </section>
+      <LocationOnboarding geo={geo} compact />
       <WeatherCard weather={weather} localTime={localTime} timezone={timezone} />
       <WeatherAlerts weather={weather} />
 
-      {/* <WeatherPanels weather={weather} localTime={localTime} timezone={timezone} /> */}
-
       <WeatherBriefing data={data} />
+
+      {topPick && (
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">AI spotlight pick</h3>
+          <PlaceInsight
+            place={topPick}
+            weather={weather}
+            localTime={localTime}
+            timezone={timezone}
+          />
+        </section>
+      )}
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Recommended for you</h2>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recommendations.map((place, index) => (
-            <PlaceCard key={place.id} place={place} rank={index + 1} />
+            <PlaceCard
+              key={place.id}
+              place={place}
+              rank={index + 1}
+              weather={weather}
+              localTime={localTime}
+              timezone={timezone}
+              originLat={geo.autoLatitude ?? geo.latitude}
+              originLng={geo.autoLongitude ?? geo.longitude}
+            />
           ))}
         </div>
       </section>

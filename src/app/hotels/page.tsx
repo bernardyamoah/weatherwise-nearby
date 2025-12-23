@@ -75,7 +75,16 @@ export default function HotelsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {hotels.map((place, index) => (
-            <PlaceCard key={place.id} place={place} rank={index + 1} />
+            <PlaceCard
+              key={place.id}
+              place={place}
+              rank={index + 1}
+              weather={data?.weather}
+              localTime={data?.localTime}
+              timezone={data?.timezone}
+              originLat={geo.autoLatitude ?? geo.latitude}
+              originLng={geo.autoLongitude ?? geo.longitude}
+            />
           ))}
         </div>
       )}

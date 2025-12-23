@@ -1,9 +1,13 @@
 "use client"
 
+import { LocationOnboarding } from "@/components/LocationOnboarding"
+import { PlaceInsight } from "@/components/PlaceInsight"
 import { MapView } from "@/components/map-view"
+import { PlaceCard } from "@/components/PlaceCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -17,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useDiscoveryQuery } from "@/hooks/useDiscoveryQuery"
 import { useGeolocation } from "@/hooks/useGeolocation"
 import { formatDistance } from "@/lib/distance"
-import { AlertCircle, Clock3, MapPin, Navigation, Star, Thermometer, Wind } from "lucide-react"
+import { AlertCircle, Clock3, MapPin, Navigation, Search, Sparkles, Star, Thermometer, Wind } from "lucide-react"
 import Link from "next/link"
 import { useQueryState } from "nuqs"
 import { useEffect, useMemo, useState } from "react"
@@ -27,22 +31,11 @@ export default function MapPage() {
   const [search, setSearch] = useQueryState("q")
   const [queryInput, setQueryInput] = useState(search || "")
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
-  const [customLocationInput, setCustomLocationInput] = useState("")
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false)
+  const quickTabs = ["coffee", "parks", "art", "family", "date night"]
 
-  const parsedCustomLocation = useMemo(() => {
-    const parts = customLocationInput.split(",").map((p) => p.trim())
-    if (parts.length === 2) {
-      const lat = Number(parts[0])
-      const lng = Number(parts[1])
-      if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng }
-      }
-    }
-    return null
-  }, [customLocationInput])
-
-  const latToUse = parsedCustomLocation?.lat ?? geo.latitude
-  const lngToUse = parsedCustomLocation?.lng ?? geo.longitude
+  const latToUse = geo.latitude
+  const lngToUse = geo.longitude
 
   const { data, isLoading, error } = useDiscoveryQuery(
     latToUse,
@@ -61,13 +54,14 @@ export default function MapPage() {
   const locationReady = latToUse !== null && lngToUse !== null
   const weather = data?.weather
   const offline = typeof navigator !== "undefined" && !navigator.onLine
+  const topSpot = data?.recommendations?.[0]
 
   const selectedPlace = useMemo(
     () => data?.recommendations?.find((p) => p.id === selectedPlaceId) ?? null,
     [data?.recommendations, selectedPlaceId]
   )
 
-  if ((geo.loading && !parsedCustomLocation) || (isLoading && locationReady)) {
+  if ((geo.loading && !locationReady) || (isLoading && locationReady)) {
     return (
       <main id="main-content" className="p-6 h-[calc(100vh-60px)]">
         <Skeleton className="w-full h-full rounded-xl" />
@@ -98,7 +92,26 @@ export default function MapPage() {
       <main id="main-content" className="p-6">
         <Card className="border-dashed">
           <CardContent className="p-6 text-sm text-muted-foreground space-y-2">
-            <p>Unable to resolve a location. Enable geolocation or enter custom coordinates (lat, lng).</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-foreground">Location needed</p>
+                <p className="text-sm text-muted-foreground">Enable geolocation or search for a place to start exploring.</p>
+              </div>
+              <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Choose location
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Set your map location</DialogTitle>
+                  </DialogHeader>
+                  <LocationOnboarding geo={geo} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardContent>
         </Card>
       </main>
@@ -108,6 +121,7 @@ export default function MapPage() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setSearch(queryInput || null)
+    setSelectedPlaceId(null)
   }
 
   const handleClear = () => {
@@ -117,51 +131,121 @@ export default function MapPage() {
 
   return (
     <main id="main-content" className="p-6 h-[calc(100vh-60px)] flex flex-col gap-4">
-      <Card className="border-muted/50 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Map Explorer</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Search and inspect recommendations near your location.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <form className="flex flex-col gap-3" onSubmit={handleSearchSubmit}>
-            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <Input
-                value={queryInput}
-                onChange={(e) => setQueryInput(e.target.value)}
-                placeholder="Search places (e.g., cafe, park)"
-                aria-label="Search nearby places"
-              />
-              <Button type="submit" className="whitespace-nowrap">Search</Button>
-              <Button type="button" variant="ghost" onClick={handleClear}>
-                Clear
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary">{data?.recommendations?.length ?? 0} results</Badge>
-                <Separator orientation="vertical" className="hidden md:block" />
-                <span>Lat: {latToUse?.toFixed(3)} | Lng: {lngToUse?.toFixed(3)}</span>
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card className="border-muted/50 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-base font-semibold">Map Explorer</CardTitle>
+                <p className="text-sm text-muted-foreground">Search nearby spots with live weather context.</p>
               </div>
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
-                <Input
-                  value={customLocationInput}
-                  onChange={(e) => setCustomLocationInput(e.target.value)}
-                  placeholder="Custom location (lat,lng)"
-                  aria-label="Custom location coordinates"
-                  className="md:w-72"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Leave blank to use your current location.
-                </p>
-              </div>
+              <Badge variant="outline" className="text-xs font-medium">
+                {data?.recommendations?.length ?? 0} nearby
+              </Badge>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-3">
+              <form className="flex flex-col gap-3" onSubmit={handleSearchSubmit}>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={queryInput}
+                      onChange={(e) => setQueryInput(e.target.value)}
+                      placeholder="Search places (e.g., cafe, park)"
+                      aria-label="Search nearby places"
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="submit" className="whitespace-nowrap">Search</Button>
+                    <Button type="button" variant="ghost" onClick={handleClear}>
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {quickTabs.map((tab) => (
+                    <Button
+                      key={tab}
+                      type="button"
+                      variant={search === tab ? "secondary" : "outline"}
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => {
+                        setSearch(tab)
+                        setQueryInput(tab)
+                        setSelectedPlaceId(null)
+                      }}
+                    >
+                      {tab}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      geo.refresh()
+                      setSelectedPlaceId(null)
+                    }}
+                    className="ml-auto"
+                  >
+                    Refresh location
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <Badge variant="secondary">Lat {latToUse?.toFixed(3)} · Lng {lngToUse?.toFixed(3)}</Badge>
+                  <Badge variant="outline">{data?.weather?.description || "Weather loading"}</Badge>
+                  {weather && (
+                    <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                      <Thermometer className="h-3.5 w-3.5 text-primary" />
+                      {weather.temperature}°C
+                    </span>
+                  )}
+                  <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Update location
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Choose a location</DialogTitle>
+                      </DialogHeader>
+                      <LocationOnboarding geo={geo} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
 
-      <div className="flex-1 relative">
+        {topSpot && weather && (
+          <Card className="border-primary/30 bg-primary/5 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                <Sparkles className="h-4 w-4" />
+                <span>AI map spotlight</span>
+              </div>
+              <CardTitle className="text-base">{topSpot.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <PlaceInsight
+                place={topSpot}
+                weather={weather}
+                localTime={data?.localTime}
+                timezone={data?.timezone}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="flex-1 relative overflow-hidden rounded-xl border border-muted/50 bg-muted/20 h-[calc(100vh)]">
         <MapView
           center={{ lat: latToUse!, lng: lngToUse! }}
           places={data?.recommendations || []}
@@ -223,6 +307,12 @@ export default function MapPage() {
                 <div className="rounded-lg border border-primary/10 bg-primary/5 p-3 text-sm leading-relaxed">
                   {selectedPlace.explanation}
                 </div>
+                <PlaceInsight
+                  place={selectedPlace}
+                  weather={data?.weather}
+                  localTime={data?.localTime}
+                  timezone={data?.timezone}
+                />
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Score: {selectedPlace.score}</span>
                   <Separator orientation="vertical" className="h-4" />
@@ -250,6 +340,40 @@ export default function MapPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Nearby list</h2>
+            <p className="text-sm text-muted-foreground">Browse recommendations alongside the map view.</p>
+          </div>
+          <Badge variant="secondary">{data?.recommendations?.length ?? 0} places</Badge>
+        </div>
+
+        {data?.recommendations?.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {data.recommendations.map((place, index) => (
+              <PlaceCard
+                key={place.id}
+                place={place}
+                rank={index + 1}
+                weather={data.weather}
+                localTime={data.localTime}
+                timezone={data.timezone}
+                originLat={geo.autoLatitude ?? geo.latitude}
+                originLng={geo.autoLongitude ?? geo.longitude}
+                onSwipeRemove={() => setSelectedPlaceId(null)}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              No places found. Try another search or location.
+            </CardContent>
+          </Card>
+        )}
+      </section>
     </main>
   )
 }

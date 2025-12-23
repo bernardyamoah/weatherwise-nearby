@@ -3,6 +3,7 @@
 import { WeatherAlerts } from "@/components/WeatherAlerts"
 import { WeatherCard } from "@/components/WeatherCard"
 import { WeatherPanels } from "@/components/WeatherPanels"
+import { WeatherPackingAdvice } from "@/components/WeatherPackingAdvice"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -158,6 +159,8 @@ export default function WeatherPage() {
       </div>
 
       <WeatherAlerts weather={weather} />
+
+      <WeatherPackingAdvice weather={weather} localTime={localTime} timezone={timezone} />
 
       <WeatherPanels weather={weather} localTime={localTime} timezone={timezone} />
 

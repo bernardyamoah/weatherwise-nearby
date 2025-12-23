@@ -1,4 +1,3 @@
-import { env } from "./env";
 import { Weather, WeatherCategory } from "./types";
 
 type MaybeNumber = number | { value?: number } | undefined | null;
@@ -7,20 +6,6 @@ function toNumber(value: MaybeNumber): number | null {
   if (typeof value === "number") return value;
   if (value && typeof value === "object" && typeof value.value === "number") return value.value;
   return null;
-}
-
-function categorizeWeatherFromConditions(
-  temperature: number,
-  conditionCode?: string,
-  precipitationChance?: number | null
-): WeatherCategory {
-  const code = (conditionCode || "").toLowerCase();
-  const precip = precipitationChance ?? 0;
-
-  if (code.includes("rain") || code.includes("storm") || precip >= 60) return "rainy";
-  if (temperature >= 30) return "hot";
-  if (temperature <= 10) return "cold";
-  return "clear";
 }
 
 function getWeatherEmoji(category: WeatherCategory): string {
@@ -36,143 +21,7 @@ function getWeatherEmoji(category: WeatherCategory): string {
   }
 }
 
-interface WeatherPoint {
-  temperature?: MaybeNumber;
-  apparentTemperature?: MaybeNumber;
-  feelsLikeTemperature?: MaybeNumber;
-  humidity?: MaybeNumber;
-  relativeHumidity?: MaybeNumber;
-  windSpeed?: MaybeNumber;
-  precipitationChance?: MaybeNumber;
-  precipitationProbability?: MaybeNumber;
-  conditionCode?: string;
-  weatherCode?: string;
-  conditions?: string;
-  description?: string;
-  icon?: string;
-  pressure?: MaybeNumber;
-  barometricPressure?: MaybeNumber;
-  visibility?: MaybeNumber;
-  visibilityDistance?: MaybeNumber;
-  cloudCover?: MaybeNumber;
-  dewPoint?: MaybeNumber;
-  sunriseTime?: string;
-  sunrise?: string;
-  sunsetTime?: string;
-  sunset?: string;
-  startTime?: string;
-  forecastStartTime?: string;
-  time?: string;
-  validTime?: string;
-  maxTemperature?: MaybeNumber;
-  minTemperature?: MaybeNumber;
-  date?: string;
-  forecastDate?: string;
-}
-
-interface GoogleWeatherResponse {
-  currentWeather?: WeatherPoint;
-  hourlyForecast?: WeatherPoint[];
-  dailyForecast?: WeatherPoint[];
-}
-
-async function fetchGoogleWeather(lat: number, lng: number): Promise<Weather> {
-  const url = new URL("https://weather.googleapis.com/v1/weather:lookup");
-  url.searchParams.set("location", `${lat},${lng}`);
-  url.searchParams.set("units", "metric");
-  url.searchParams.set("language", "en");
-  url.searchParams.set("key", env.PLACES_API_KEY);
-
-  console.log("[Weather] Fetching Google Weather for", lat, lng);
-
-  const response = await fetch(url.toString(), { cache: "no-store" });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Google Weather API error: ${response.status} - ${error}`);
-  }
-
-  const data: GoogleWeatherResponse = await response.json();
-  const current: WeatherPoint = data.currentWeather || {};
-
-  const temperature = Math.round(toNumber(current.temperature) ?? 0);
-  const apparentTemperature = Math.round(
-    toNumber(current.apparentTemperature ?? current.feelsLikeTemperature) ?? temperature
-  );
-  const humidity = Math.round(toNumber(current.humidity ?? current.relativeHumidity) ?? 0);
-  const windSpeed = Math.round(toNumber(current.windSpeed) ?? 0);
-  const precipChance = toNumber(current.precipitationChance ?? current.precipitationProbability);
-  const conditionCode: string | undefined = current.conditionCode || current.weatherCode;
-  const description: string = current.conditions || current.description || conditionCode || "Weather";
-  const icon = (current.icon || conditionCode || "clear").toString();
-  const pressureHpa = toNumber(current.pressure || current.barometricPressure);
-  const visibilityRaw = toNumber(current.visibility || current.visibilityDistance);
-  const visibilityKm = visibilityRaw === null ? null : Math.round((visibilityRaw > 1000 ? visibilityRaw / 1000 : visibilityRaw) * 10) / 10;
-  const cloudCover = toNumber(current.cloudCover);
-  const dewPoint = toNumber(current.dewPoint);
-  const sunrise = current.sunriseTime || current.sunrise || undefined;
-  const sunset = current.sunsetTime || current.sunset || undefined;
-
-  const hourly = (data.hourlyForecast || []).map((entry) => {
-    const time =
-      entry.startTime || entry.forecastStartTime || entry.time || entry.validTime || new Date().toISOString();
-    return {
-      time,
-      temperature2m: toNumber(entry.temperature) ?? temperature,
-      precipitationProbability: toNumber(entry.precipitationChance ?? entry.precipitationProbability) ?? 0,
-    };
-  });
-
-  const daily = (data.dailyForecast || []).map((entry) => {
-    const time = entry.date || entry.forecastDate || entry.startTime || new Date().toISOString();
-    return {
-      time,
-      temperature2mMax: toNumber(entry.maxTemperature) ?? null,
-      temperature2mMin: toNumber(entry.minTemperature) ?? null,
-      weatherCode: entry.conditionCode || entry.weatherCode || "0",
-    };
-  });
-
-  const category = categorizeWeatherFromConditions(temperature, conditionCode, precipChance);
-
-  return {
-    temperature,
-    condition: description,
-    category,
-    description,
-    icon,
-    hourly: hourly.length
-      ? {
-          time: hourly.map((h) => h.time),
-          temperature2m: hourly.map((h) => h.temperature2m),
-          precipitationProbability: hourly.map((h) => h.precipitationProbability),
-        }
-      : undefined,
-    daily: daily.length
-      ? {
-          time: daily.map((d) => d.time),
-          temperature2mMax: daily.map((d) => d.temperature2mMax),
-          temperature2mMin: daily.map((d) => d.temperature2mMin),
-          weatherCode: daily.map((d) => Number(d.weatherCode) || 0),
-        }
-      : undefined,
-    current: {
-      relativeHumidity2m: humidity,
-      apparentTemperature,
-      windSpeed10m: windSpeed,
-      uvIndex: toNumber(current.uvIndex) ?? 0,
-      pressureHpa: pressureHpa ?? undefined,
-      visibilityKm: visibilityKm ?? undefined,
-      cloudCover: cloudCover ?? undefined,
-      dewPoint: dewPoint ?? undefined,
-      precipitationProbability: precipChance ?? undefined,
-      sunrise,
-      sunset,
-    },
-  };
-}
-
-// Open-Meteo fallback (existing behavior)
+// Open-Meteo primary provider
 async function fetchOpenMeteoWeather(lat: number, lng: number): Promise<Weather> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat.toString());
@@ -313,12 +162,7 @@ function getOpenMeteoCondition(weatherCode: number): string {
 }
 
 export async function fetchWeather(lat: number, lng: number): Promise<Weather> {
-  try {
-    return await fetchGoogleWeather(lat, lng);
-  } catch (error) {
-    console.warn("[Weather] Google Weather failed, falling back to Open-Meteo", error);
-    return fetchOpenMeteoWeather(lat, lng);
-  }
+  return fetchOpenMeteoWeather(lat, lng);
 }
 
 export { getWeatherEmoji };

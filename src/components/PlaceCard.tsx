@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistance } from "@/lib/distance";
 import { getPlaceCategory } from "@/lib/places";
-import { ScoredPlace } from "@/lib/types";
+import { ScoredPlace, Weather } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useFavoritesStore } from "@/store/favorites";
 import { useGeolocationStore } from "@/store/geolocation";
@@ -14,6 +14,7 @@ import { Bike, Bus, Car, Clock3, Footprints, Heart, MapPin, Navigation, Phone, P
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "./ui/drawer";
+import { PlaceInsight } from "./PlaceInsight";
 
 interface PlaceCardProps {
   place: ScoredPlace;
@@ -21,9 +22,14 @@ interface PlaceCardProps {
   pinned?: boolean;
   onPinToggle?: (placeId: string) => void;
   onSwipeRemove?: (placeId: string) => void;
+  weather?: Weather;
+  localTime?: string;
+  timezone?: string;
+  originLat?: number | null;
+  originLng?: number | null;
 }
 
-export function PlaceCard({ place, rank, pinned, onPinToggle, onSwipeRemove }: PlaceCardProps) {
+export function PlaceCard({ place, rank, pinned, onPinToggle, onSwipeRemove, weather, localTime, timezone, originLat, originLng }: PlaceCardProps) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
   const isFav = isFavorite(place.id);
   const [open, setOpen] = useState(false);
@@ -33,14 +39,18 @@ export function PlaceCard({ place, rank, pinned, onPinToggle, onSwipeRemove }: P
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.location.lat},${place.location.lng}&query_place_id=${place.id}`;
   const userLat = useGeolocationStore((state) => state.latitude);
   const userLng = useGeolocationStore((state) => state.longitude);
+  const autoLat = useGeolocationStore((state) => state.autoLatitude);
+  const autoLng = useGeolocationStore((state) => state.autoLongitude);
+  const originLatToUse = originLat ?? autoLat ?? userLat;
+  const originLngToUse = originLng ?? autoLng ?? userLng;
 
   const displayTypes = place.types
     .filter((type) => !type.includes("point_of_interest"))
     .slice(0, 2)
     .map((type) => type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
 
-  const hasOrigin = userLat !== null && userLng !== null;
-  const originParam = hasOrigin ? `${userLat},${userLng}` : undefined;
+  const hasOrigin = originLatToUse !== null && originLngToUse !== null;
+  const originParam = hasOrigin ? `${originLatToUse},${originLngToUse}` : undefined;
 
   const directionsUrl = (mode: "walking" | "bicycling" | "driving" | "transit") => {
     const url = new URL("https://www.google.com/maps/dir/");
@@ -283,6 +293,13 @@ export function PlaceCard({ place, rank, pinned, onPinToggle, onSwipeRemove }: P
               <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm leading-relaxed text-foreground/90">
                 {place.explanation}
               </div>
+
+              <PlaceInsight
+                place={place}
+                weather={weather}
+                localTime={localTime}
+                timezone={timezone}
+              />
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Directions</p>

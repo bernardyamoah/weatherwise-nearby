@@ -2,8 +2,9 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Weather } from "@/lib/types";
-import { Droplets, Moon, Sun, Sunrise, Sunset, Wind } from "lucide-react";
+import { Droplets, Moon, Sun, Sunrise, Sunset, Umbrella, Wind } from "lucide-react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 interface WeatherCardProps {
   weather: Weather;
@@ -12,6 +13,7 @@ interface WeatherCardProps {
 }
 
 export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) {
+  const [hero, setHero] = useState<{ url: string; alt: string } | null>(null);
   const localDate = new Date(localTime);
   const timeString = localDate.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -56,15 +58,64 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
   };
 
   const theme = categoryStyles[weather.category];
+  const humidity = weather.current?.relativeHumidity2m ?? null;
+  const windSpeed = weather.current?.windSpeed10m ?? null;
+  const precip = weather.current?.precipitationProbability ?? weather.hourly?.precipitationProbability?.[0] ?? null;
+
+  const formatMetric = (value: number | null | undefined, suffix: string) =>
+    value === null || value === undefined ? "—" : `${Math.round(value)}${suffix}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchHero = async () => {
+      try {
+        const res = await fetch(
+          `/api/weather-image?category=${weather.category}&timeOfDay=${encodeURIComponent(timeOfDay.label)}&temperature=${encodeURIComponent(
+            weather.temperature
+          )}&description=${encodeURIComponent(weather.description)}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) throw new Error("Image fetch failed");
+        const data = await res.json();
+        if (data?.url) {
+          setHero({ url: data.url, alt: data.alt || `${weather.description} background` });
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.warn("[WeatherCard] Hero fetch failed", error);
+          setHero(null);
+        }
+      }
+    };
+
+    fetchHero();
+
+    return () => controller.abort();
+  }, [weather.category, timeOfDay.label, weather.description]);
 
   return (
     <Card className={`group relative mb-6 overflow-hidden border-0 bg-gradient-to-br ${theme.gradient} shadow-2xl transition-all duration-700 hover:scale-[1.02] hover:shadow-3xl`}>
-      {/* Animated background overlay */}
-      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-0 transition-opacity duration-700 group-hover:opacity-100`} />
-      
-      {/* Noise texture */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay" 
-           style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' /%3E%3C/svg%3E\")" }} />
+      {hero && (
+        <div className="absolute inset-0">
+          <Image
+            src={hero.url}
+            alt={hero.alt}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+            className="object-cover opacity-70 transition duration-700 group-hover:scale-105"
+          />
+          <div className={`absolute inset-0 bg-gradient-to-br ${theme.overlay} backdrop-blur-[2px]`} />
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' /%3E%3C/svg%3E\")",
+            }}
+          />
+        </div>
+      )}
 
       <CardContent className="relative p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -73,7 +124,7 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
             {/* Weather icon with glow */}
             <div className={`relative flex-shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}>
               <div className={`absolute inset-0 rounded-3xl bg-white/10 blur-2xl ${theme.glow} transition-all duration-500 group-hover:blur-3xl`} />
-              <div className="relative rounded-3xl bg-white/5 p-4 backdrop-blur-xl border border-white/10">
+              <div className="relative rounded-3xl bg-white/10 p-4 backdrop-blur-xl border border-white/15">
                 <Image
                   src={`/icons/${weather.icon}.png`}
                   alt={weather.description}
@@ -115,11 +166,17 @@ export function WeatherCard({ weather, localTime, timezone }: WeatherCardProps) 
             <div className="flex gap-3">
               <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
                 <Droplets className="h-3.5 w-3.5 text-white/70" />
-                <span className="text-xs font-medium text-white/70">85%</span>
+                <span className="text-xs font-medium text-white/80">{formatMetric(humidity, "%")}</span>
               </div>
               <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
                 <Wind className="h-3.5 w-3.5 text-white/70" />
-                <span className="text-xs font-medium text-white/70">12 km/h</span>
+                <span className="text-xs font-medium text-white/80">{formatMetric(windSpeed, " km/h")}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+                <Umbrella className="h-3.5 w-3.5 text-white/70" />
+                <span className="text-xs font-medium text-white/80">
+                  {precip === null ? "—" : `${Math.round(precip)}%`}
+                </span>
               </div>
             </div>
           </div>
